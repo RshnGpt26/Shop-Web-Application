@@ -1,0 +1,1 @@
+mongodb+srv://Roshan:Roshan256@cluster0.fscf3.mongodb.net/shop?retryWrites=true&w=majority
