@@ -1,5 +1,6 @@
 const User = require('../models/user');
 const bcrypt = require('bcryptjs');
+const { validationResult } = require('express-validator');
 // const nodemailer = require('nodemailer');
 // const sendGridTransport = require('nodemailer-sendgrid-transport');
 
@@ -34,12 +35,29 @@ exports.getSignup = (req, res, next) => {
     path: '/signup',
     pageTitle: 'Signup',
     errorMessage: message,
+    oldInput: {
+      email: '',
+      password: '',
+      confirmPassword: '',
+    }
   });
 };
 
 exports.postLogin = (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
+
+  const errors = validationResult(req);
+  if(!errors.isEmpty()) {
+    // console.log(errors.array()[0].msg);
+    return res.status(422)
+    .render('auth/login', {
+      path: '/login',
+      pageTitle: 'Login',
+      errorMessage: errors.array()[0].msg,
+    });
+  }
+
   User.findOne({email: email})
     .then(user => {
       if(!user) {
@@ -71,13 +89,18 @@ exports.postSignup = (req, res, next) => {
   const email = req.body.email;
   const password = req.body.password;
   const confirmPassword = req.body.confirmPassword;
-  User.findOne({email: email})
-  .then(userDoc => {
-    if(userDoc) {
-      req.flash('error', 'Email Exist Already')
-      return res.redirect('/signup');
-    }
-    return bcrypt.hash(password, 12)
+  const errors = validationResult(req);
+  if(!errors.isEmpty()) {
+    // console.log(errors.array()[0].msg);
+    return res.status(422)
+      .render('auth/signup', {
+      path: '/signup',
+      pageTitle: 'Signup',
+      errorMessage: errors.array()[0].msg,
+      oldInput: { email: email, password: password, confirmPassword: req.body.confirmPassword },
+    });
+  }
+  bcrypt.hash(password, 12)
     .then(hashPassword =>{
       const user = new User({
         email: email,
@@ -100,11 +123,6 @@ exports.postSignup = (req, res, next) => {
     .catch(err => {
       console.log(err);
     });
-  })
-  .catch(err => {
-    console.log(err);
-    // res.redirect('/');
-  });
 };
 
 exports.postLogout = (req, res, next) => {
@@ -113,3 +131,17 @@ exports.postLogout = (req, res, next) => {
     res.redirect('/');
   });
 };
+
+exports.getReset = (req, res,next) => {
+  let message = req.flash('error');
+  if(message.length > 0) {
+    message = message[0];
+  } else {
+    message = null;
+  }
+  res.render('auth/reset', {
+    path: '/reset',
+    pageTitle: 'Reset Password',
+    errorMessage: message,
+  });
+}
